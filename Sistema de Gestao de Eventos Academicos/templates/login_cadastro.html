@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  {% load static %}
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Google Fonts: Poppins -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- CSS via Django static -->
+  <link rel="stylesheet" href="{% static 'css/login_cadastro.css' %}">
+
+  <title>SGEA Campus | Login</title>
+</head>
+
+<body>
+  <header class="header">
+    <!-- Voltar para a home servida pelo Django (path '') -->
+    <a href="/" class="logo"> SGEA <span>Campus</span> </a>
+  </header>
+
+  <div class="container" id="container">
+    <!-- CADASTRO -->
+    <div class="form-container sign-up">
+      <!-- JS gerencia o envio -->
+      <form id="form-cadastro" novalidate>
+        <h1>Criar conta</h1>
+
+        <!-- NOME: não aceita números -->
+        <input
+          id="cad-nome"
+          type="text"
+          name="nome"
+          placeholder="Nome completo"
+          required
+          pattern="^[A-Za-zÀ-ÖØ-öø-ÿ\s']+$"
+          title="Use apenas letras (acentos permitidos) e espaços."
+          autocomplete="name"
+          oninput="this.value = this.value.replace(/[0-9]/g,'')"
+        />
+        <div class="field-error" aria-live="polite"></div>
+
+        <!-- EMAIL -->
+        <input
+          id="cad-email"
+          type="email"
+          name="email"
+          placeholder="Email"
+          required
+          autocomplete="email"
+        />
+        <div class="field-error" aria-live="polite"></div>
+
+        <!-- INSTITUIÇÃO -->
+
+        <input
+          id="cad-instituicao"
+          type="text"
+          name="instituicao"
+          placeholder="Instituição"
+          required
+          autocomplete="organization"
+        />
+        <div class="field-error" aria-live="polite"></div>
+
+        <!-- CPF (mascarado) -->
+        <input
+          id="cad-cpf"
+          type="text"
+          name="cpf"
+          placeholder="CPF (000.000.000-00)"
+          required
+          inputmode="numeric"
+          maxlength="14"
+          title="CPF no formato 000.000.000-00"
+        />
+        <div class="field-error" aria-live="polite"></div>
+
+        <!-- TELEFONE (mascarado) -->
+        <input
+          id="cad-telefone"
+          type="tel"
+          name="telefone"
+          placeholder="Telefone (XX XXXXX-XXXX)"
+          required
+          inputmode="numeric"
+          maxlength="13"
+          title="Telefone no formato: DDD + número (ex.: 11 98765-4321)"
+        />
+        <div class="field-error" aria-live="polite"></div>
+        
+
+        <label for="tipo_usuario"><h5>Tipo de usuário:</h5></label>
+        <div class="select-wrap">
+          <select id="cad-perfil" name="perfil" required>
+            <option value="" disabled selected>Selecione...</option>
+            <option value="aluno">Aluno</option>
+            <option value="professor">Professor</option>
+            <option value="organizador">Organizador</option>
+          </select>
+        </div>
+
+        <!-- SENHA -->
+        
+        <input
+          id="cad-senha"
+          type="password"
+          name="senha"
+          placeholder="Senha"
+          required
+          minlength="8"
+          maxlength="20"
+          title="Use de 8 a 20 caracteres, incluindo letras e números."
+          oninput="this.value = this.value.slice(0,20)"
+        />
+        <div class="field-error" aria-live="polite"></div>
+        
+
+        <!-- CONFIRMAR SENHA -->
+        
+        <input
+          id="cad-senha-confirm"
+          type="password"
+          name="senha_confirm"
+          placeholder="Confirmar senha"
+          required
+          maxlength="20"
+          oninput="this.value = this.value.slice(0,20)"
+          aria-describedby="senha-confirm-msg"
+        />
+        <div id="senha-confirm-msg" class="field-error" aria-live="polite"></div>
+        
+        <button type="submit">Criar conta</button>
+      </form>
+    </div>
+
+    <!-- LOGIN -->
+    <div class="form-container sign-in">
+      <form id="form-login" novalidate>
+        <h1>Login</h1>
+        <br>
+        <input id="login-email" type="email" name="email" placeholder="Email" required autocomplete="email">
+        <input id="login-senha" type="password" name="senha" placeholder="Senha" required autocomplete="current-password" minlength="8" maxlength="20">
+        <br>
+        <button type="submit">Entrar</button>
+      </form>
+    </div>
+
+    <div class="toggle-container">
+      <div class="toggle">
+        <div class="toggle-panel toggle-left">
+          <h1>Bem-vindo(a) de volta!</h1>
+          <p>Faça login com seu e-mail e senha para acessar todos os recursos do SGEA.</p>
+          <button class="hidden" id="login">Fazer login</button>
+        </div>
+        <div class="toggle-panel toggle-right">
+          <h1>Olá, acadêmico(a)!</h1>
+          <p>Cadastre-se com seus dados para acessar todos os recursos do SGEA.</p>
+          <button class="hidden" id="register">Inscreva-se</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast" role="status" aria-live="polite" style="position:fixed;bottom:16px;right:16px;padding:10px 14px;border-radius:8px;background:#222;color:#fff;opacity:0;transition:opacity .2s;">...</div>
+
+  <!-- JS via Django static -->
+  <script src="{% static 'js/login_cadastro.js' %}"></script>
+</body>
+</html>
