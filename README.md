@@ -14,6 +14,8 @@ py -3.11 -m venv .venv
 3️⃣ Instale as dependências
 ```
 pip install django
+pip install djangorestframework
+
 ```
 4️⃣ Aplique as migrações
 ```
