@@ -14,6 +14,10 @@ py -3.11 -m venv .venv
 3️⃣ Instale as dependências
 ```
 pip install django
+pip install djangorestframework
+pip install django-cors-headers
+pip install reportlab
+
 ```
 4️⃣ Aplique as migrações
 ```
