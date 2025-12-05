@@ -119,14 +119,13 @@ function criarCardEvento(evento, userPerfil) {
   const dataFim = formatarDataHora(evento.data_fim);
   const capacidade = evento.capacidade_par ?? "—";
 
-  // ---------- URL do banner ----------
   let bannerUrl = null;
 
   if (evento.banner_url) {
     bannerUrl = evento.banner_url;
   } else if (evento.banner) {
     try {
-      const apiOrigin = new URL(API_BASE_URL).origin; // http://127.0.0.1:8000
+      const apiOrigin = new URL(API_BASE_URL).origin;
       if (evento.banner.startsWith("http")) {
         bannerUrl = evento.banner;
       } else if (evento.banner.startsWith("/")) {
@@ -192,7 +191,6 @@ function criarCardEvento(evento, userPerfil) {
         ${descricao}
       </p>
 
-      <!-- LINHA DO BOTÃO DE INSCRIÇÃO -->
       <div class="flex items-center justify-between gap-2 pt-2 border-t border-slate-800/70">
         <span class="text-xs text-slate-400 inline-flex items-center gap-1">
           <i class="bx bx-group text-sm text-primary-400"></i>
@@ -210,7 +208,7 @@ function criarCardEvento(evento, userPerfil) {
   `;
 
   // Se for organizador, não deixa se inscrever
-  if (userPerfil === "organizador") {
+  if ((userPerfil || "").trim().toLowerCase() === "organizador") {
     const btn = div.querySelector(".btn-inscricao");
     if (btn) {
       btn.classList.add("bg-slate-700", "cursor-not-allowed", "opacity-60");
@@ -220,11 +218,8 @@ function criarCardEvento(evento, userPerfil) {
     }
   }
 
-  console.log("Card de evento criado com botão de inscrição:", evento.id);
-
   return div;
 }
-
 
 // =============== LÓGICA DE PÁGINA ===============
 async function initDashboard() {
@@ -240,6 +235,20 @@ async function initDashboard() {
     "btn-painel-organizador-mobile"
   );
 
+  // links de menu
+  const linkMeusEventos = document.getElementById("link-meus-eventos");
+  const linkMeusCertificados = document.getElementById(
+    "link-meus-certificados"
+  );
+  const linkMeusEventosMobile = document.getElementById(
+    "link-meus-eventos-mobile"
+  );
+  const linkMeusCertificadosMobile = document.getElementById(
+    "link-meus-certificados-mobile"
+  );
+  const linkAdmin = document.getElementById("link-admin");
+  const linkAdminMobile = document.getElementById("link-admin-mobile");
+
   try {
     // 1) Garante usuário autenticado
     const user = await getCurrentUser();
@@ -252,21 +261,44 @@ async function initDashboard() {
 
     const perfilNormalizado = (user.perfil || "").trim().toLowerCase();
 
-    if (perfilNormalizado === "organizador" && btnCriar) {
-      btnCriar.classList.remove("hidden");
-      btnCriar.classList.add("flex");
-      btnCriar.addEventListener("click", () => {
-        window.location.href = "/criar_evento/";
-      });
-    }
-
+    // CONTROLE DE ITENS DO MENU POR PERFIL
     if (perfilNormalizado === "organizador") {
-      if (btnPainelOrgDesktop) {
+      // Organizador NÃO vê "Meus eventos" e "Meus certificados"
+      if (linkMeusEventos) linkMeusEventos.classList.add("hidden");
+      if (linkMeusCertificados) linkMeusCertificados.classList.add("hidden");
+      if (linkMeusEventosMobile)
+        linkMeusEventosMobile.classList.add("hidden");
+      if (linkMeusCertificadosMobile)
+        linkMeusCertificadosMobile.classList.add("hidden");
+
+      // Organizador vê Admin
+      if (linkAdmin) linkAdmin.classList.remove("hidden");
+      if (linkAdminMobile) linkAdminMobile.classList.remove("hidden");
+
+      // Organizador vê painel do organizador
+      if (btnPainelOrgDesktop)
         btnPainelOrgDesktop.classList.remove("hidden");
+      if (btnPainelOrgMobile) btnPainelOrgMobile.classList.remove("hidden");
+
+      // Se tiver botão de criar evento, mostra para organizador
+      if (btnCriar) {
+        btnCriar.classList.remove("hidden");
+        btnCriar.classList.add("flex");
+        btnCriar.addEventListener("click", () => {
+          window.location.href = "/criar_evento/";
+        });
       }
-      if (btnPainelOrgMobile) {
-        btnPainelOrgMobile.classList.remove("hidden");
-      }
+    } else {
+      // Aluno / outros:
+      // vê Meus eventos e Meus certificados (já aparecem por padrão)
+      // NÃO vê Admin nem painel do organizador
+      if (linkAdmin) linkAdmin.classList.add("hidden");
+      if (linkAdminMobile) linkAdminMobile.classList.add("hidden");
+
+      if (btnPainelOrgDesktop)
+        btnPainelOrgDesktop.classList.add("hidden");
+      if (btnPainelOrgMobile)
+        btnPainelOrgMobile.classList.add("hidden");
     }
 
     async function handleLogout() {
