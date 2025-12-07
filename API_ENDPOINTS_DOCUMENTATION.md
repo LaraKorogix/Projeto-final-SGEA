@@ -1,538 +1,348 @@
-# 📋 Documentação de Endpoints da API - SGEA Campus
+# 📋 Documentação de Endpoints da API - SGEA
 
 **Base URL:** `http://127.0.0.1:8000/api`
 
-> **Nota:** Todos os endpoints que requerem autenticação devem usar `credentials: 'include'` para enviar cookies de sessão.
+> **Autenticação:** Token (`Authorization: Token <token>`) ou Sessão (`credentials: 'include'`)
 
 ---
 
 ## 🔐 1. Autenticação e Usuários
 
 ### 1.1 Registro de Usuário
-- **Endpoint:** `/usuarios/registro/`
-- **Método:** `POST`
+- **Endpoint:** `POST /usuarios/registro/`
 - **Autenticação:** Não
-- **Headers:**
-  ```json
-  {
-    "Content-Type": "application/json",
-    "X-CSRFToken": "<token>"
-  }
-  ```
 - **Payload:**
-  ```json
-  {
-    "nome": "João Silva",
-    "email": "joao@exemplo.com",
-    "instituicao_ensino": "Universidade Federal",
-    "telefone": "11999999999",  // apenas dígitos
-    "cpf": "12345678900",        // apenas dígitos
-    "perfil": "aluno",           // "aluno" | "professor" | "organizador"
-    "senha": "senha123"
-  }
-  ```
+```json
+{
+  "nome": "João Silva",
+  "email": "joao@exemplo.com",
+  "instituicao_ensino": "Universidade Federal",
+  "telefone": "11999999999",
+  "cpf": "12345678900",
+  "perfil": "aluno",
+  "senha": "Senha@123"
+}
+```
 - **Resposta (201):**
-  ```json
-  {
-    "id": 1,
-    "email": "joao@exemplo.com",
-    "nome": "João Silva",
-    "perfil": "aluno",
-    "telefone": "11999999999",
-    "instituicao_ensino": "Universidade Federal",
-    "criado_em": "2025-01-01T10:00:00Z",
-    "message": "Usuário registrado com sucesso"
-  }
-  ```
-- **Erros:**
-  - `400`: Email já cadastrado ou dados inválidos
-  - `500`: Erro interno do servidor
+```json
+{
+  "id": 1,
+  "email": "joao@exemplo.com",
+  "nome": "João Silva",
+  "perfil": "aluno",
+  "message": "Cadastro realizado! Verifique seu email para confirmar.",
+  "email_enviado": true
+}
+```
+- **Notas:**
+  - Email de confirmação é enviado automaticamente
+  - Senha deve ter 8+ caracteres, letras, números e caracteres especiais
 
 ---
 
 ### 1.2 Login
-- **Endpoint:** `/usuarios/login/`
-- **Método:** `POST`
+- **Endpoint:** `POST /usuarios/login/`
 - **Autenticação:** Não
-- **Headers:**
-  ```json
-  {
-    "Content-Type": "application/json",
-    "X-CSRFToken": "<token>"
-  }
-  ```
 - **Payload:**
-  ```json
-  {
-    "email": "joao@exemplo.com",
-    "senha": "senha123"
-  }
-  ```
+```json
+{
+  "email": "joao@exemplo.com",
+  "senha": "Senha@123"
+}
+```
 - **Resposta (200):**
-  ```json
-  {
-    "id": 1,
-    "email": "joao@exemplo.com",
-    "nome": "João Silva",
-    "perfil": "aluno",
-    "telefone": "11999999999",
-    "instituicao_ensino": "Universidade Federal",
-    "criado_em": "2025-01-01T10:00:00Z",
-    "message": "Login realizado com sucesso"
-  }
-  ```
+```json
+{
+  "id": 1,
+  "email": "joao@exemplo.com",
+  "nome": "João Silva",
+  "perfil": "aluno",
+  "token": "abc123...",
+  "message": "Login realizado com sucesso"
+}
+```
 - **Erros:**
   - `401`: Credenciais inválidas
-  - `400`: Dados incompletos
+  - `403`: Email não confirmado
 
 ---
 
-### 1.3 Logout
-- **Endpoint:** `/usuarios/logout/`
-- **Método:** `POST`
-- **Autenticação:** Sim (cookie de sessão)
-- **Headers:**
-  ```json
-  {
-    "Content-Type": "application/json",
-    "X-CSRFToken": "<token>"
-  }
-  ```
-- **Payload:** Vazio
-- **Resposta (200):**
-  ```json
-  {
-    "message": "Logout realizado com sucesso"
-  }
-  ```
+### 1.3 Confirmar Email
+- **Endpoint:** `GET /usuarios/confirmar_email/?codigo=XXX`
+- **Autenticação:** Não
+- **Resposta:** Redireciona para `/login/?msg=email_confirmado`
 
 ---
 
-### 1.4 Obter Usuário Atual
-- **Endpoint:** `/usuarios/current_user/`
-- **Método:** `GET`
-- **Autenticação:** Sim (cookie de sessão)
-- **Payload:** Não aplicável
+### 1.4 Reenviar Confirmação
+- **Endpoint:** `POST /usuarios/reenviar_confirmacao/`
+- **Autenticação:** Não
+- **Payload:**
+```json
+{
+  "email": "joao@exemplo.com"
+}
+```
 - **Resposta (200):**
-  ```json
-  {
-    "id": 1,
-    "email": "joao@exemplo.com",
-    "nome": "João Silva",
-    "perfil": "aluno",
-    "telefone": "11999999999",
-    "instituicao_ensino": "Universidade Federal",
-    "cpf": "12345678900",
-    "criado_em": "2025-01-01T10:00:00Z"
-  }
-  ```
-- **Erros:**
-  - `401`: Usuário não autenticado
+```json
+{
+  "message": "Email de confirmação reenviado"
+}
+```
+
+---
+
+### 1.5 Logout
+- **Endpoint:** `POST /usuarios/logout/`
+- **Autenticação:** Sim
+- **Resposta (200):**
+```json
+{
+  "message": "Logout realizado com sucesso"
+}
+```
+
+---
+
+### 1.6 Usuário Atual
+- **Endpoint:** `GET /usuarios/current_user/`
+- **Autenticação:** Sim
+- **Resposta (200):**
+```json
+{
+  "id": 1,
+  "email": "joao@exemplo.com",
+  "nome": "João Silva",
+  "perfil": "aluno",
+  "email_confirmado": true
+}
+```
 
 ---
 
 ## 📅 2. Eventos
 
 ### 2.1 Listar Eventos Disponíveis
-- **Endpoint:** `/eventos/disponiveis/`
-- **Método:** `GET`
+- **Endpoint:** `GET /eventos/disponiveis/`
 - **Autenticação:** Sim
-- **Descrição:** Retorna todos os eventos nos quais o usuário ainda NÃO está inscrito
-- **Payload:** Não aplicável
-- **Resposta (200):**
-  ```json
-  [
-    {
-      "id": 1,
-      "titulo": "Semana Acadêmica de Tecnologia",
-      "descricao": "Evento de tecnologia...",
-      "local": "Auditório Principal",
-      "data_inicio": "2025-03-01T09:00:00Z",
-      "data_fim": "2025-03-05T18:00:00Z",
-      "capacidade_par": 100,
-      "categoria": 1,
-      "organizador": 5,
-      "banner": "/media/banners/evento1.jpg",  // ou null
-      "banner_url": "http://127.0.0.1:8000/media/banners/evento1.jpg",  // campo calculado
-      "criado_em": "2025-01-15T10:00:00Z"
-    }
-  ]
-  ```
+- **Resposta (200):** Array de eventos disponíveis para inscrição
 
 ---
 
 ### 2.2 Listar Meus Eventos (Inscritos)
-- **Endpoint:** `/eventos/meus_eventos/`
-- **Método:** `GET`
+- **Endpoint:** `GET /eventos/meus_eventos/`
 - **Autenticação:** Sim
-- **Descrição:** Retorna todos os eventos nos quais o usuário está inscrito
-- **Payload:** Não aplicável
-- **Resposta (200):**
-  ```json
-  [
-    {
-      "id": 1,
-      "titulo": "Semana Acadêmica de Tecnologia",
-      "descricao": "Evento de tecnologia...",
-      "local": "Auditório Principal",
-      "data_inicio": "2025-03-01T09:00:00Z",
-      "data_fim": "2025-03-05T18:00:00Z",
-      "capacidade_par": 100,
-      "categoria": 1,
-      "organizador": 5,
-      "banner": "/media/banners/evento1.jpg",
-      "banner_url": "http://127.0.0.1:8000/media/banners/evento1.jpg",
-      "criado_em": "2025-01-15T10:00:00Z"
-    }
-  ]
-  ```
+- **Resposta (200):** Array de eventos que o usuário está inscrito
 
 ---
 
 ### 2.3 Criar Evento (Organizador)
-- **Endpoint:** `/eventos/`
-- **Método:** `POST`
+- **Endpoint:** `POST /eventos/`
 - **Autenticação:** Sim (apenas organizadores)
-- **Headers:**
-  ```json
-  {
-    "Content-Type": "application/json"
-  }
-  ```
+- **Content-Type:** `application/json` ou `multipart/form-data` (com banner)
 - **Payload:**
-  ```json
-  {
-    "titulo": "Semana Acadêmica de Tecnologia",
-    "descricao": "Descrição do evento",  // opcional
-    "local": "Auditório Principal",
-    "data_inicio": "2025-03-01T09:00:00Z",  // formato ISO 8601
-    "data_fim": "2025-03-05T18:00:00Z",     // formato ISO 8601
-    "capacidade_par": 100,                   // opcional (null se não informado)
-    "categoria": 1                           // ID da categoria, opcional (null se não informado)
-  }
-  ```
-- **Resposta (201):**
-  ```json
-  {
-    "id": 1,
-    "titulo": "Semana Acadêmica de Tecnologia",
-    "descricao": "Descrição do evento",
-    "local": "Auditório Principal",
-    "data_inicio": "2025-03-01T09:00:00Z",
-    "data_fim": "2025-03-05T18:00:00Z",
-    "capacidade_par": 100,
-    "categoria": 1,
-    "organizador": 5,
-    "banner": null,
-    "criado_em": "2025-01-15T10:00:00Z",
-    "message": "Evento criado com sucesso"
-  }
-  ```
-- **Erros:**
-  - `401`: Usuário não autenticado
-  - `403`: Apenas organizadores podem criar eventos
-  - `400`: Dados inválidos (ex: data_fim anterior a data_inicio)
+```json
+{
+  "titulo": "Semana de Tecnologia",
+  "descricao": "Descrição do evento",
+  "local": "Auditório Principal",
+  "data_inicio": "2025-12-10T09:00:00Z",
+  "data_fim": "2025-12-15T18:00:00Z",
+  "capacidade_par": 100,
+  "categoria": 1
+}
+```
+- **Resposta (201):** Dados do evento criado
 
 ---
 
-### 2.4 Atualizar Evento (Organizador)
-- **Endpoint:** `/eventos/{id}/`
-- **Método:** `PUT` ou `PATCH`
-- **Autenticação:** Sim (apenas o organizador criador)
-- **Payload:** Mesma estrutura do criar, com campos opcionais para PATCH
-- **Resposta (200):** Dados do evento atualizado
+### 2.4 Eventos do Organizador
+- **Endpoint:** `GET /eventos/organizador/`
+- **Autenticação:** Sim (apenas organizadores)
+- **Resposta (200):** Array de eventos criados pelo organizador
 
 ---
 
-### 2.5 Deletar Evento (Organizador)
-- **Endpoint:** `/eventos/{id}/`
-- **Método:** `DELETE`
-- **Autenticação:** Sim (apenas o organizador criador)
-- **Resposta (204):** Sem conteúdo
+### 2.5 Estatísticas do Organizador
+- **Endpoint:** `GET /eventos/estatisticas/`
+- **Autenticação:** Sim (apenas organizadores)
+- **Resposta (200):**
+```json
+{
+  "total_eventos": 5,
+  "total_proximos": 2,
+  "total_inscricoes": 150
+}
+```
+
+---
+
+### 2.6 Participantes do Evento
+- **Endpoint:** `GET /eventos/{id}/participantes/`
+- **Autenticação:** Sim (apenas organizador do evento)
+- **Resposta (200):** Array de inscrições com dados dos participantes
 
 ---
 
 ## 📝 3. Inscrições
 
 ### 3.1 Inscrever-se em Evento
-- **Endpoint:** `/inscricoes/`
-- **Método:** `POST`
+- **Endpoint:** `POST /inscricoes/`
 - **Autenticação:** Sim
-- **Headers:**
-  ```json
-  {
-    "Content-Type": "application/json"
-  }
-  ```
 - **Payload:**
-  ```json
-  {
-    "evento": 1  // ID do evento
-  }
-  ```
-- **Resposta (201):**
-  ```json
-  {
-    "id": 10,
-    "usuario": 3,
-    "evento": 1,
-    "data_inscricao": "2025-01-20T14:30:00Z",
-    "status": "confirmada",
-    "message": "Inscrição realizada com sucesso"
-  }
-  ```
+```json
+{
+  "evento": 1
+}
+```
+- **Resposta (201):** Dados da inscrição
 - **Erros:**
-  - `401`: Usuário não autenticado
-  - `400`: 
-    - Já está inscrito neste evento
-    - Evento lotado (capacidade atingida)
-    - Evento já finalizado
-    - Organizadores não podem se inscrever em eventos
+  - `400`: Já inscrito / Evento lotado
 
 ---
 
-### 3.2 Cancelar Inscrição
-- **Endpoint:** `/inscricoes/cancelar/`
-- **Método:** `POST`
+### 3.2 Minhas Inscrições
+- **Endpoint:** `GET /inscricoes/minhas_inscricoes/`
 - **Autenticação:** Sim
-- **Headers:**
-  ```json
-  {
-    "Content-Type": "application/json"
-  }
-  ```
+- **Resposta (200):** Array de inscrições do usuário
+
+---
+
+### 3.3 Cancelar Inscrição
+- **Endpoint:** `POST /inscricoes/cancelar_inscricao/`
+- **Autenticação:** Sim
 - **Payload:**
-  ```json
-  {
-    "evento": 1  // ID do evento
-  }
-  ```
+```json
+{
+  "evento": 1
+}
+```
 - **Resposta (200):**
-  ```json
-  {
-    "message": "Inscrição removida com sucesso"
-  }
-  ```
-- **Erros:**
-  - `401`: Usuário não autenticado
-  - `404`: Inscrição não encontrada
+```json
+{
+  "message": "Inscrição removida com sucesso"
+}
+```
+
+---
+
+### 3.4 Marcar Presença
+- **Endpoint:** `POST /inscricoes/{id}/marcar_presenca/`
+- **Autenticação:** Sim (organizador)
+- **Resposta (200):**
+```json
+{
+  "status": "Presenca marcada"
+}
+```
 
 ---
 
 ## 🎓 4. Certificados
 
 ### 4.1 Listar Meus Certificados
-- **Endpoint:** `/certificados/`
-- **Método:** `GET`
+- **Endpoint:** `GET /certificados/`
 - **Autenticação:** Sim
-- **Descrição:** Retorna certificados gerados automaticamente para eventos concluídos
-- **Payload:** Não aplicável
+- **Descrição:** Lista certificados de eventos concluídos (apenas presença confirmada)
 - **Resposta (200):**
-  ```json
-  [
-    {
-      "id": 1,
-      "usuario": 3,
-      "inscricao": 10,
-      "evento_titulo": "Semana Acadêmica de Tecnologia",  // campo adicional
-      "codigo_validacao": "CERT-2025-ABC123",
-      "data_emissao": "2025-03-06T00:00:00Z",
-      "carga_horaria": 40,  // opcional, pode ser null
-      "arquivo": "/media/certificados/cert_1.pdf",  // ou null
-      "arquivo_url": "http://127.0.0.1:8000/media/certificados/cert_1.pdf"  // campo calculado
-    }
-  ]
-  ```
+```json
+[
+  {
+    "id": 1,
+    "inscricao": 10,
+    "codigo_validacao": "XXXX...",
+    "data_emissao": "2025-12-16T00:00:00Z",
+    "arquivo_url": "http://127.0.0.1:8000/media/certificados/cert_1.pdf"
+  }
+]
+```
 
 ---
 
 ### 4.2 Validar Certificado
-- **Endpoint:** `/certificados/validar/`
-- **Método:** `GET`
-- **Autenticação:** Não
-- **Query Parameters:**
-  - `codigo`: Código de validação do certificado
-- **Exemplo:** `/certificados/validar/?codigo=CERT-2025-ABC123`
-- **Resposta (200):**
-  ```json
-  {
-    "valido": true,
-    "certificado": {
-      "codigo_validacao": "CERT-2025-ABC123",
-      "nome_participante": "João Silva",
-      "evento_titulo": "Semana Acadêmica de Tecnologia",
-      "data_emissao": "2025-03-06T00:00:00Z",
-      "carga_horaria": 40
-    }
-  }
-  ```
-- **Resposta (404):**
-  ```json
-  {
-    "valido": false,
-    "error": "Certificado não encontrado"
-  }
-  ```
+- **Endpoint:** `GET /certificados/validar/?codigo=XXX`
+- **Autenticação:** Não (público)
+- **Resposta (200):** Dados do certificado se válido
+- **Resposta (404):** Certificado inválido
 
 ---
 
 ## 📂 5. Categorias
 
 ### 5.1 Listar Categorias
-- **Endpoint:** `/categorias/`
-- **Método:** `GET`
-- **Autenticação:** Sim
-- **Descrição:** Retorna todas as categorias disponíveis para eventos
-- **Payload:** Não aplicável
+- **Endpoint:** `GET /categorias/`
+- **Autenticação:** Não
 - **Resposta (200):**
-  ```json
-  [
-    {
-      "id": 1,
-      "nome": "Tecnologia"
-    },
-    {
-      "id": 2,
-      "nome": "Ciências"
-    },
-    {
-      "id": 3,
-      "nome": "Artes"
-    }
-  ]
-  ```
+```json
+[
+  { "id": 1, "nome": "Tecnologia" },
+  { "id": 2, "nome": "Ciências" }
+]
+```
 
 ---
 
-## 🔧 6. Painel do Organizador
+## 📊 6. Logs de Auditoria
 
-### 6.1 Listar Eventos do Organizador
-- **Endpoint:** `/eventos/meus_organizados/` (ou usar filtro em `/eventos/`)
-- **Método:** `GET`
+### 6.1 Consultar Logs
+- **Endpoint:** `GET /audit-logs/`
 - **Autenticação:** Sim (apenas organizadores)
-- **Descrição:** Retorna eventos criados pelo organizador logado
-- **Resposta (200):** Array de eventos (mesma estrutura de 2.1)
+- **Query Parameters:**
+  - `data`: Filtrar por data (YYYY-MM-DD)
+  - `usuario_email`: Filtrar por email
+  - `usuario_id`: Filtrar por ID
+  - `acao`: Filtrar por tipo de ação
+  - `limit`: Limite de resultados (default: 50)
+  - `offset`: Paginação
 
----
+- **Exemplo:** `GET /audit-logs/?data=2025-12-07&acao=usuario_login`
 
-### 6.2 Listar Participantes de um Evento
-- **Endpoint:** `/eventos/{evento_id}/participantes/`
-- **Método:** `GET`
-- **Autenticação:** Sim (apenas o organizador criador)
 - **Resposta (200):**
-  ```json
-  [
-    {
-      "id": 10,
-      "usuario": {
-        "id": 3,
-        "nome": "João Silva",
-        "email": "joao@exemplo.com",
-        "telefone": "11999999999"
-      },
-      "data_inscricao": "2025-01-20T14:30:00Z",
-      "status": "confirmada"
-    }
-  ]
-  ```
+```json
+[
+  {
+    "id": 1,
+    "usuario": 5,
+    "usuario_nome": "João Silva",
+    "usuario_email": "joao@exemplo.com",
+    "acao": "usuario_login",
+    "acao_display": "Login de Usuário",
+    "detalhes": "Login realizado com sucesso",
+    "ip_address": "127.0.0.1",
+    "data_hora": "2025-12-07T10:30:00Z"
+  }
+]
+```
+
+**Ações registradas:**
+- `usuario_criado`, `usuario_login`
+- `evento_criado`, `evento_alterado`, `evento_excluido`, `evento_consultado`
+- `inscricao_criada`, `inscricao_cancelada`, `presenca_marcada`
+- `certificado_gerado`, `certificado_consultado`
 
 ---
 
-### 6.3 Gerar Lista de Presença (Excel)
-- **Endpoint:** `/eventos/{evento_id}/gerar_presenca/`
-- **Método:** `GET`
-- **Autenticação:** Sim (apenas o organizador criador)
-- **Resposta:** Arquivo Excel (.xlsx) para download
+## ⚡ 7. Rate Limiting (Throttling)
+
+| Endpoint | Limite |
+|----------|--------|
+| `/eventos/*` | 20 requisições/dia |
+| `/inscricoes/*` | 50 requisições/dia |
 
 ---
 
-## 📊 7. Observações Importantes
+## 📖 8. Swagger/OpenAPI
 
-### 7.1 Autenticação
-- O frontend usa **cookies de sessão** (`credentials: 'include'`)
-- Todos os endpoints protegidos devem retornar `401` se não autenticado
-- Tokens CSRF devem ser validados em requisições POST/PUT/DELETE
+- **Swagger UI:** `http://127.0.0.1:8000/swagger/`
+- **ReDoc:** `http://127.0.0.1:8000/redoc/`
 
-### 7.2 Permissões
-- **Organizadores:**
-  - Podem criar, editar e deletar seus próprios eventos
-  - NÃO podem se inscrever em eventos
-  - Têm acesso ao painel administrativo
-  - Podem visualizar participantes de seus eventos
-
-- **Alunos/Professores:**
-  - Podem se inscrever em eventos
-  - Podem cancelar suas inscrições
-  - Recebem certificados automaticamente após eventos concluídos
-  - NÃO podem criar eventos
-
-### 7.3 Regras de Negócio
-
-#### Inscrições:
-- Não permitir inscrição duplicada
-- Verificar capacidade máxima do evento
-- Não permitir inscrição em eventos já finalizados
-- Organizadores não podem se inscrever
-
-#### Certificados:
-- Gerados automaticamente quando `data_fim` < data atual
-- Apenas para usuários com inscrição confirmada
-- Código de validação único e verificável
-
-#### Eventos:
-- `data_fim` deve ser posterior a `data_inicio`
-- Campos obrigatórios: titulo, local, data_inicio, data_fim
-- Campo `banner` é opcional (FileField)
-
-### 7.4 Formato de Datas
-- Todas as datas são em formato **ISO 8601**: `YYYY-MM-DDTHH:MM:SSZ`
-- Exemplo: `"2025-03-01T09:00:00Z"`
-- Frontend envia no formato: `"2025-12-10T14:30:00Z"`
-
-### 7.5 CORS
-- Configure CORS para aceitar `credentials: true`
-- Permita origin: `http://localhost:8000` (Django templates)
-
----
-
-## 🚀 Prioridade de Implementação
-
-### Fase 1 (Essencial):
-1. ✅ Autenticação (registro, login, logout, current_user)
-2. ✅ Eventos (listar disponíveis, meus eventos)
-3. ✅ Inscrições (criar, cancelar)
-
-### Fase 2 (Importante):
-4. ✅ Criar eventos (organizador)
-5. ✅ Categorias (listar)
-6. ✅ Certificados (listar, validar)
-
-### Fase 3 (Desejável):
-7. ✅ Painel organizador (participantes)
-8. ✅ Editar/deletar eventos
-9. ✅ Gerar lista de presença
-
----
-
-## 📝 Checklist para o Backend
-
-- [ ] Configurar Django REST Framework
-- [ ] Criar models: Usuario, Evento, Categoria, Inscricao, Certificado
-- [ ] Implementar autenticação por sessão
-- [ ] Criar serializers para cada model
-- [ ] Implementar permissões (IsOrganizador, IsAuthenticated)
-- [ ] Criar views/viewsets para cada endpoint
-- [ ] Configurar CORS com credentials
-- [ ] Implementar geração automática de certificados
-- [ ] Adicionar validações de negócio
-- [ ] Configurar upload de banners (media files)
-- [ ] Testar todos os endpoints
+Para autenticar no Swagger:
+1. Clique em "Authorize"
+2. Digite: `Token SEU_TOKEN_AQUI`
 
 ---
 
 ## 🐛 Tratamento de Erros
-
-Todos os endpoints devem retornar erros no formato:
 
 ```json
 {
@@ -540,18 +350,15 @@ Todos os endpoints devem retornar erros no formato:
 }
 ```
 
-**Códigos HTTP comuns:**
+**Códigos HTTP:**
 - `200`: Sucesso
-- `201`: Criado com sucesso
-- `204`: Sucesso sem conteúdo
+- `201`: Criado
 - `400`: Dados inválidos
 - `401`: Não autenticado
-- `403`: Sem permissão
+- `403`: Sem permissão / Email não confirmado
 - `404`: Não encontrado
-- `500`: Erro interno
+- `429`: Rate limit excedido
 
 ---
 
-**Documentação gerada em:** 04/12/2024  
-**Versão:** 1.0  
-**Projeto:** SGEA Campus - Sistema de Gerenciamento de Eventos Acadêmicos
+**Versão:** 2.0 | **Atualizado:** 07/12/2024

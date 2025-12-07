@@ -1,27 +1,32 @@
-# 📋 Resumo Rápido das Rotas - SGEA Campus
+# 📋 Resumo Rápido das Rotas - SGEA
+
+**Base URL:** `http://127.0.0.1:8000/api`
 
 ## 🔐 Autenticação e Usuários
 
 | Endpoint | Método | Auth | Descrição |
 |----------|--------|------|-----------|
-| `/usuarios/registro/` | POST | ❌ | Cadastro de novo usuário |
-| `/usuarios/login/` | POST | ❌ | Login do usuário |
-| `/usuarios/logout/` | POST | ✅ | Logout do usuário |
+| `/usuarios/registro/` | POST | ❌ | Cadastro (envia email de confirmação) |
+| `/usuarios/login/` | POST | ❌ | Login (retorna token) |
+| `/usuarios/logout/` | POST | ✅ | Logout |
 | `/usuarios/current_user/` | GET | ✅ | Dados do usuário logado |
+| `/usuarios/confirmar_email/?codigo=XXX` | GET | ❌ | Confirmar email pelo link |
+| `/usuarios/reenviar_confirmacao/` | POST | ❌ | Reenviar email de confirmação |
 
 ---
 
 ## 📅 Eventos
 
 | Endpoint | Método | Auth | Perfil | Descrição |
-|----------|--------|------|---------|-----------|
-| `/eventos/disponiveis/` | GET | ✅ | Todos | Eventos disponíveis (não inscritos) |
-| `/eventos/meus_eventos/` | GET | ✅ | Todos | Eventos que estou inscrito |
-| `/eventos/` | POST | ✅ | Organizador | Criar novo evento |
+|----------|--------|------|--------|-----------|
+| `/eventos/disponiveis/` | GET | ✅ | Todos | Eventos disponíveis |
+| `/eventos/meus_eventos/` | GET | ✅ | Todos | Eventos inscritos |
+| `/eventos/` | POST | ✅ | Organizador | Criar evento |
 | `/eventos/{id}/` | PUT/PATCH | ✅ | Organizador | Atualizar evento |
 | `/eventos/{id}/` | DELETE | ✅ | Organizador | Deletar evento |
+| `/eventos/organizador/` | GET | ✅ | Organizador | Meus eventos criados |
+| `/eventos/estatisticas/` | GET | ✅ | Organizador | Estatísticas do organizador |
 | `/eventos/{id}/participantes/` | GET | ✅ | Organizador | Listar participantes |
-| `/eventos/{id}/gerar_presenca/` | GET | ✅ | Organizador | Gerar lista de presença (Excel) |
 
 ---
 
@@ -30,7 +35,9 @@
 | Endpoint | Método | Auth | Descrição |
 |----------|--------|------|-----------|
 | `/inscricoes/` | POST | ✅ | Inscrever-se em evento |
-| `/inscricoes/cancelar/` | POST | ✅ | Cancelar inscrição |
+| `/inscricoes/minhas_inscricoes/` | GET | ✅ | Listar minhas inscrições |
+| `/inscricoes/cancelar_inscricao/` | POST | ✅ | Cancelar inscrição |
+| `/inscricoes/{id}/marcar_presenca/` | POST | ✅ | Marcar presença (org.) |
 
 ---
 
@@ -41,21 +48,66 @@
 | `/certificados/` | GET | ✅ | Listar meus certificados |
 | `/certificados/validar/?codigo=XXX` | GET | ❌ | Validar certificado (público) |
 
+> **Nota:** Certificados só são gerados para usuários com **presença confirmada**.
+
 ---
 
 ## 📂 Categorias
 
 | Endpoint | Método | Auth | Descrição |
 |----------|--------|------|-----------|
-| `/categorias/` | GET | ✅ | Listar categorias de eventos |
+| `/categorias/` | GET | ❌ | Listar categorias |
+
+---
+
+## 📊 Logs de Auditoria (Organizadores)
+
+| Endpoint | Método | Auth | Descrição |
+|----------|--------|------|-----------|
+| `/audit-logs/` | GET | ✅ | Consultar logs de auditoria |
+
+**Filtros disponíveis:**
+- `?data=2025-12-07` - Por data específica
+- `?usuario_email=aluno@sgea.com` - Por email do usuário
+- `?usuario_id=5` - Por ID do usuário
+- `?acao=usuario_login` - Por tipo de ação
+
+**Ações auditadas:**
+- `usuario_criado`, `usuario_login`
+- `evento_criado`, `evento_alterado`, `evento_excluido`, `evento_consultado`
+- `inscricao_criada`, `inscricao_cancelada`, `presenca_marcada`
+- `certificado_gerado`, `certificado_consultado`
+
+---
+
+## 🔑 Autenticação
+
+### Por Token (API/Swagger)
+```
+Header: Authorization: Token <seu_token>
+```
+
+### Por Sessão (Frontend)
+```javascript
+fetch(url, { credentials: 'include' })
+```
+
+---
+
+## ⚡ Rate Limiting (Throttling)
+
+| Endpoint | Limite |
+|----------|--------|
+| `/eventos/*` | 20 requisições/dia |
+| `/inscricoes/*` | 50 requisições/dia |
 
 ---
 
 ## 📊 Legendas
 
-- ✅ = Requer autenticação (cookie de sessão)
+- ✅ = Requer autenticação
 - ❌ = Público (sem autenticação)
-- **Organizador** = Apenas usuários com perfil "organizador"
+- **Organizador** = Apenas perfil "organizador"
 - **Todos** = Qualquer usuário autenticado
 
 ---
@@ -68,10 +120,10 @@
   "nome": "string",
   "email": "string",
   "instituicao_ensino": "string",
-  "telefone": "string (apenas dígitos)",
-  "cpf": "string (apenas dígitos)",
+  "telefone": "string (opcional)",
+  "cpf": "string (opcional)",
   "perfil": "aluno | professor | organizador",
-  "senha": "string (min 8 caracteres)"
+  "senha": "string (min 8, com letras, números e caracteres especiais)"
 }
 ```
 
@@ -89,21 +141,14 @@
   "titulo": "string",
   "descricao": "string (opcional)",
   "local": "string",
-  "data_inicio": "2025-03-01T09:00:00Z",
-  "data_fim": "2025-03-05T18:00:00Z",
+  "data_inicio": "2025-12-10T09:00:00Z",
+  "data_fim": "2025-12-10T18:00:00Z",
   "capacidade_par": 100,
   "categoria": 1
 }
 ```
 
-### Inscrição em Evento
-```json
-{
-  "evento": 1
-}
-```
-
-### Cancelar Inscrição
+### Inscrição
 ```json
 {
   "evento": 1
@@ -112,60 +157,22 @@
 
 ---
 
-## 🚨 Regras de Negócio Importantes
+## 🚨 Regras de Negócio
 
 ### ✅ Permitido
 - Alunos/Professores podem se inscrever em eventos
 - Organizadores podem criar/editar/deletar seus eventos
-- Certificados são gerados automaticamente após evento concluir
-- Validação de certificados é pública (sem login)
+- Certificados são gerados para **presença confirmada**
+- Validação de certificados é pública
 
 ### ❌ NÃO Permitido
-- Organizadores **não** podem se inscrever em eventos
 - Inscrição duplicada no mesmo evento
-- Inscrição em evento lotado (capacidade atingida)
+- Inscrição em evento lotado
 - Inscrição em evento já finalizado
-- Editar/deletar eventos de outros organizadores
+- Evento com data de início no passado
+- Login sem confirmar email
+- Senha sem caracteres especiais
 
 ---
 
-## 📅 Formato de Datas
-
-**Formato obrigatório:** ISO 8601  
-**Exemplo:** `2025-03-01T09:00:00Z`
-
-O frontend envia as datas no formato `datetime-local` convertido para ISO 8601 com sufixo `Z` (UTC).
-
----
-
-## 🔑 Autenticação
-
-- Método: **Sessão Django (Cookies)**
-- Header CSRF: `X-CSRFToken` (em POST/PUT/DELETE)
-- Credentials: `include` (para enviar cookies)
-
-### Exemplo de requisição autenticada:
-```javascript
-fetch('http://127.0.0.1:8000/api/eventos/disponiveis/', {
-  method: 'GET',
-  credentials: 'include'
-})
-```
-
----
-
-## 🎨 Resposta de Erro Padrão
-
-```json
-{
-  "error": "Mensagem descritiva do erro"
-}
-```
-
-**Códigos HTTP:**
-- `200` - OK
-- `201` - Criado
-- `400` - Dados inválidos
-- `401` - Não autenticado
-- `403` - Sem permissão
-- `404` - Não encontrado
+**Atualizado:** 07/12/2024 | **Versão:** 2.0
