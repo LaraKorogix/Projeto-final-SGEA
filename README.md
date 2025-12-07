@@ -15,7 +15,7 @@ Sistema completo para gerenciamento de eventos acadêmicos com autenticação, i
 
 ---
 
-## 🚀 Instalação Rápida
+## 🚀 Instalação Rápida (LEIA ISSO PRIMEIRO!)
 
 ### 1️⃣ Clone e crie o ambiente virtual
 ```bash
@@ -28,14 +28,23 @@ py -3.11 -m venv .venv
 pip install django djangorestframework django-cors-headers reportlab drf-yasg
 ```
 
-### 3️⃣ Aplique as migrações e crie dados de teste
+### 3️⃣ Aplique as migrações
 ```bash
 cd SGEA
 python manage.py migrate
-python manage.py seed_data
 ```
 
-### 4️⃣ Execute o servidor
+### 4️⃣ **CRIE OS USUÁRIOS DE TESTE** (IMPORTANTE!)
+```bash
+python manage.py seed_data
+```
+Este comando cria automaticamente:
+- Usuários de teste (organizador, aluno, professor)
+- Categorias de eventos
+- Eventos de exemplo
+- Superusuário Django para o /admin/
+
+### 5️⃣ Execute o servidor
 ```bash
 python manage.py runserver
 ```
@@ -44,11 +53,17 @@ python manage.py runserver
 
 ## 🔑 Usuários de Teste
 
+### Sistema SGEA (login na aplicação)
 | Perfil | Email | Senha |
 |--------|-------|-------|
 | **Organizador** | organizador@sgea.com | Admin@123 |
 | **Aluno** | aluno@sgea.com | Aluno@123 |
 | **Professor** | professor@sgea.com | Professor@123 |
+
+### Django Admin (/admin/)
+| Username | Senha |
+|----------|-------|
+| **admin** | Admin@123 |
 
 ---
 
@@ -65,6 +80,38 @@ python manage.py runserver
 
 ---
 
+## 📋 Comandos Úteis
+
+### Rodar em outro computador (ex: faculdade)
+```bash
+# 1. Ativar ambiente virtual
+.venv\Scripts\activate
+
+# 2. Entrar na pasta do projeto
+cd SGEA
+
+# 3. Aplicar migrações (se necessário)
+python manage.py migrate
+
+# 4. Criar usuários e dados de teste
+python manage.py seed_data
+
+# 5. Rodar servidor
+python manage.py runserver
+```
+
+### Limpar banco de dados e recriar
+```bash
+# Apaga o banco e migrações
+del db.sqlite3
+
+# Recria tudo
+python manage.py migrate
+python manage.py seed_data
+```
+
+---
+
 ## 📋 API Endpoints
 
 ### Autenticação
@@ -75,7 +122,6 @@ python manage.py runserver
 | POST | `/api/usuarios/logout/` | Logout |
 | GET | `/api/usuarios/current_user/` | Usuário atual |
 | GET | `/api/usuarios/confirmar_email/` | Confirmar email |
-| POST | `/api/usuarios/reenviar_confirmacao/` | Reenviar email |
 
 ### Eventos
 | Método | Endpoint | Descrição |
@@ -108,7 +154,6 @@ python manage.py runserver
 
 ### Token (API)
 ```bash
-# Login retorna token
 curl -X POST http://127.0.0.1:8000/api/usuarios/login/ \
   -H "Content-Type: application/json" \
   -d '{"email":"organizador@sgea.com","senha":"Admin@123"}'
@@ -139,7 +184,8 @@ SGEA/
 │   ├── views.py         # ViewSets da API
 │   ├── serializers.py   # Serializers DRF
 │   ├── authentication.py# Autenticação customizada
-│   └── throttles.py     # Rate limiting
+│   ├── throttles.py     # Rate limiting
+│   └── management/commands/seed_data.py  # Criação de dados de teste
 ├── templates/           # Templates HTML
 ├── static/js/           # JavaScript frontend
 └── sgea/settings.py     # Configurações Django
@@ -161,4 +207,4 @@ EMAIL_HOST_PASSWORD = 'sua_senha_de_app'
 
 ---
 
-**Versão:** 2.0 | **Atualizado:** 07/12/2024
+**Versão:** 2.1 | **Atualizado:** 07/12/2024

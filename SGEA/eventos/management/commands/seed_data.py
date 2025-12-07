@@ -1,5 +1,6 @@
 from django.core.management.base import BaseCommand
 from django.contrib.auth.hashers import make_password
+from django.contrib.auth.models import User
 from django.utils import timezone
 from datetime import timedelta
 
@@ -132,8 +133,26 @@ class Command(BaseCommand):
                 else:
                     self.stdout.write(f'  → Evento já existe: {evento_data["titulo"]}')
 
+        # Criar superusuário Django para /admin/
+        if not User.objects.filter(username='admin').exists():
+            User.objects.create_superuser(
+                username='admin',
+                email='admin@sgea.com',
+                password='Admin@123'
+            )
+            self.stdout.write('  ✓ Superusuário Django criado: admin / Admin@123')
+        else:
+            self.stdout.write('  → Superusuário Django já existe: admin')
+
+        # Marcar usuários como confirmados (email_confirmado=True)
+        Usuario.objects.all().update(email_confirmado=True)
+        self.stdout.write('  ✓ Usuários marcados com email_confirmado=True')
+
         self.stdout.write(self.style.SUCCESS('\n✅ Seeding concluído com sucesso!'))
-        self.stdout.write('\nUsuários de teste:')
+        self.stdout.write('\nUsuários de teste (SGEA):')
         self.stdout.write('  • organizador@sgea.com / Admin@123')
         self.stdout.write('  • aluno@sgea.com / Aluno@123')
         self.stdout.write('  • professor@sgea.com / Professor@123')
+        self.stdout.write('\nSuperusuário Django (/admin/):')
+        self.stdout.write('  • admin / Admin@123')
+
