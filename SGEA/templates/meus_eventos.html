@@ -1,290 +1,230 @@
 <!DOCTYPE html>
 <html lang="pt-br">
-  <head>
-    {% load static %}
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SGEA Campus - Meus Eventos</title>
 
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
+<head>
+  {% load static %}
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SGEA Campus - Meus Eventos</title>
 
-    <!-- Google Fonts: DM Sans -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap"
-      rel="stylesheet"
-    />
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
 
-    <!-- Boxicons -->
-    <link
-      href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css"
-      rel="stylesheet"
-    />
+  <!-- Google Fonts: DM Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap"
+    rel="stylesheet" />
 
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            fontFamily: {
-              sans: ["DM Sans", "sans-serif"],
-              mono: ["Space Mono", "monospace"],
+  <!-- Boxicons -->
+  <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet" />
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ["DM Sans", "sans-serif"],
+            mono: ["Space Mono", "monospace"],
+          },
+          colors: {
+            primary: {
+              50: "#f5f3ff",
+              100: "#ede9fe",
+              500: "#8b5cf6",
+              600: "#7c3aed",
+              700: "#6d28d9",
             },
-            colors: {
-              primary: {
-                50: "#f5f3ff",
-                100: "#ede9fe",
-                500: "#8b5cf6",
-                600: "#7c3aed",
-                700: "#6d28d9",
-              },
+          },
+          animation: {
+            "fade-in": "fadeIn 0.5s ease-out",
+            "slide-up": "slideUp 0.6s ease-out",
+            "scale-in": "scaleIn 0.4s ease-out",
+          },
+          keyframes: {
+            fadeIn: {
+              "0%": { opacity: "0" },
+              "100%": { opacity: "1" },
             },
-            animation: {
-              "fade-in": "fadeIn 0.5s ease-out",
-              "slide-up": "slideUp 0.6s ease-out",
-              "scale-in": "scaleIn 0.4s ease-out",
+            slideUp: {
+              "0%": { transform: "translateY(20px)", opacity: "0" },
+              "100%": { transform: "translateY(0)", opacity: "1" },
             },
-            keyframes: {
-              fadeIn: {
-                "0%": { opacity: "0" },
-                "100%": { opacity: "1" },
-              },
-              slideUp: {
-                "0%": { transform: "translateY(20px)", opacity: "0" },
-                "100%": { transform: "translateY(0)", opacity: "1" },
-              },
-              scaleIn: {
-                "0%": { transform: "scale(0.95)", opacity: "0" },
-                "100%": { transform: "scale(1)", opacity: "1" },
-              },
+            scaleIn: {
+              "0%": { transform: "scale(0.95)", opacity: "0" },
+              "100%": { transform: "scale(1)", opacity: "1" },
             },
           },
         },
-      };
-    </script>
+      },
+    };
+  </script>
 
-    <style>
-      body {
-        font-family: "DM Sans", sans-serif;
-      }
-    </style>
-  </head>
+  <style>
+    body {
+      font-family: "DM Sans", sans-serif;
+    }
+  </style>
+</head>
 
-  <body
-    class="bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 min-h-screen text-white"
-  >
-    <!-- Header -->
-    <header
-      class="fixed top-0 left-0 right-0 z-50 bg-slate-950/80 backdrop-blur-xl border-b border-slate-800/50"
-    >
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex items-center justify-between h-20">
-          <!-- Logo -->
-          <a href="/" class="flex items-center space-x-2 group">
-            <div class="relative">
-              <div
-                class="absolute inset-0 bg-primary-500/20 blur-xl rounded-full group-hover:bg-primary-500/30 transition-all"
-              ></div>
-              <span
-                class="relative text-2xl font-bold tracking-tight text-white"
-              >
-                SGEA <span class="text-primary-500 font-mono">Campus</span>
-              </span>
+<body class="bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 min-h-screen text-white">
+  <!-- Header -->
+  <header class="fixed top-0 left-0 right-0 z-50 bg-slate-950/80 backdrop-blur-xl border-b border-slate-800/50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-20">
+        <!-- Logo (apenas visual quando logado) -->
+        <div class="flex items-center space-x-2 group cursor-default">
+          <div class="relative">
+            <div
+              class="absolute inset-0 bg-primary-500/20 blur-xl rounded-full group-hover:bg-primary-500/30 transition-all">
             </div>
-          </a>
-
-          <!-- Mobile Menu Button -->
-          <button
-            id="menu-icon"
-            class="lg:hidden text-white hover:text-primary-500 transition-colors"
-          >
-            <i class="bx bx-menu text-3xl"></i>
-          </button>
-
-          <!-- Desktop Navigation -->
-          <nav class="hidden lg:flex items-center space-x-1">
-            <a
-              href="/meus-eventos/"
-              class="px-4 py-2 rounded-lg bg-primary-500/10 text-primary-400 font-medium border border-primary-500/20"
-            >
-              Meus eventos
-            </a>
-            <a
-              href="/meus-certificados/"
-              class="px-4 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/50 transition-all duration-200"
-            >
-              Meus certificados
-            </a>
-            <a
-              href="/dashboard/"
-              class="px-4 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/50 transition-all duration-200"
-            >
-              Eventos
-            </a>
-          </nav>
-
-          <!-- Área de ações à direita -->
-          <div class="hidden lg:flex items-center gap-3">
-            <a
-              href="/admin/"
-              class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 rounded-lg font-medium text-sm transition-all duration-200"
-            >
-              Admin
-            </a>
-
-            <!-- Botão do painel do organizador (começa escondido) -->
-            <a
-              id="btn-painel-organizador"
-              href="/painel-organizador/"
-              class="hidden px-4 py-2.5 bg-slate-800 hover:bg-slate-700 rounded-lg font-medium text-sm transition-all duration-200"
-            >
-              Painel do organizador
-            </a>
-
-            <button
-              id="btn-logout"
-              class="px-4 py-2.5 bg-red-600 hover:bg-red-500 rounded-lg font-medium text-sm transition-all duration-200"
-            >
-              Sair
-            </button>
+            <span class="relative text-2xl font-bold tracking-tight text-white">
+              SGEA <span class="text-primary-500 font-mono">Campus</span>
+            </span>
           </div>
         </div>
 
-        <!-- Mobile Navigation -->
-        <nav
-          id="mobile-menu"
-          class="hidden lg:hidden pb-4 space-y-2 animate-slide-up"
-        >
-          <a
-            href="/meus-eventos/"
-            class="block px-4 py-3 rounded-lg bg-primary-500/10 text-primary-400 font-medium border border-primary-500/20"
-          >
+        <!-- Mobile Menu Button -->
+        <button id="menu-icon" class="lg:hidden text-white hover:text-primary-500 transition-colors">
+          <i class="bx bx-menu text-3xl"></i>
+        </button>
+
+        <!-- Desktop Navigation -->
+        <nav class="hidden lg:flex items-center space-x-1">
+          <a href="/meus-eventos/"
+            class="px-4 py-2 rounded-lg bg-primary-500/10 text-primary-400 font-medium border border-primary-500/20">
             Meus eventos
           </a>
-          <a
-            href="/meus-certificados/"
-            class="block px-4 py-3 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/50 transition-all duration-200"
-          >
+          <a href="/meus-certificados/"
+            class="px-4 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/50 transition-all duration-200">
             Meus certificados
           </a>
-          <a
-            href="/dashboard/"
-            class="block px-4 py-3 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/50 transition-all duration-200"
-          >
+          <a href="/dashboard/"
+            class="px-4 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/50 transition-all duration-200">
             Eventos
           </a>
-          <a
-            href="/admin/"
-            class="block px-4 py-3 text-center bg-slate-800 rounded-lg font-medium"
-          >
+        </nav>
+
+        <!-- Área de ações à direita -->
+        <div class="hidden lg:flex items-center gap-3">
+          <a href="/admin/"
+            class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 rounded-lg font-medium text-sm transition-all duration-200">
             Admin
           </a>
 
-          <!-- Botão do painel do organizador no mobile (começa escondido) -->
-          <a
-            id="btn-painel-organizador-mobile"
-            href="/painel-organizador/"
-            class="hidden block px-4 py-3 text-center bg-slate-800 rounded-lg font-medium"
-          >
+          <!-- Botão do painel do organizador (começa escondido) -->
+          <a id="btn-painel-organizador" href="/painel-organizador/"
+            class="hidden px-4 py-2.5 bg-slate-800 hover:bg-slate-700 rounded-lg font-medium text-sm transition-all duration-200">
             Painel do organizador
           </a>
 
-          <button
-            id="btn-logout-mobile"
-            class="block w-full px-4 py-3 text-center bg-red-600 rounded-lg font-medium"
-          >
+          <button id="btn-logout"
+            class="px-4 py-2.5 bg-red-600 hover:bg-red-500 rounded-lg font-medium text-sm transition-all duration-200">
             Sair
           </button>
-        </nav>
-      </div>
-    </header>
-
-    <!-- Main Content -->
-    <main class="pt-32 pb-20 px-4 sm:px-6 lg:px-8">
-      <div class="max-w-7xl mx-auto">
-        <!-- Section Header -->
-        <div
-          class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-12 animate-fade-in"
-        >
-          <div>
-            <h1
-              class="text-4xl sm:text-5xl font-bold mb-2 bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent"
-            >
-              Meus Eventos
-            </h1>
-            <p class="text-slate-400 text-lg flex items-center gap-2">
-              <i class="bx bx-check-circle text-emerald-400"></i>
-              Eventos em que você está inscrito
-            </p>
-          </div>
-
-          <a
-            href="/dashboard/"
-            class="inline-flex items-center gap-2 px-6 py-3 bg-slate-800 hover:bg-slate-700 rounded-xl font-medium transition-all duration-200"
-          >
-            <i class="bx bx-search text-xl"></i>
-            <span>Buscar mais eventos</span>
-          </a>
-        </div>
-
-        <!-- Loading State -->
-        <div id="loading-state" class="text-center py-20 animate-pulse">
-          <div
-            class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-slate-800/50 mb-6"
-          >
-            <i class="bx bx-loader-alt bx-spin text-4xl text-primary-400"></i>
-          </div>
-          <h3 class="text-2xl font-semibold mb-2 text-slate-300">
-            Carregando seus eventos...
-          </h3>
-          <p class="text-slate-500">Aguarde um momento</p>
-        </div>
-
-        <!-- Empty State -->
-        <div id="empty-state" class="hidden text-center py-20 animate-scale-in">
-          <div
-            class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-slate-800/50 mb-6"
-          >
-            <i class="bx bx-calendar-x text-4xl text-slate-600"></i>
-          </div>
-          <h3 class="text-2xl font-semibold mb-2 text-slate-300">
-            Nenhuma inscrição ainda
-          </h3>
-          <p class="text-slate-500 mb-6">
-            Você ainda não se inscreveu em nenhum evento
-          </p>
-          <a
-            href="/dashboard/"
-            class="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-500 rounded-xl font-semibold transition-all duration-200"
-          >
-            <i class="bx bx-search text-xl"></i>
-            <span>Explorar eventos</span>
-          </a>
-        </div>
-
-        <!-- Grid de Eventos -->
-        <div
-          id="eventos-box"
-          class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade-in"
-        >
-          <!-- Eventos serão inseridos aqui via JavaScript -->
         </div>
       </div>
-    </main>
 
-    <!-- Toast Notification -->
-    <div
-      id="toast"
-      role="status"
-      aria-live="polite"
-      class="fixed bottom-8 right-8 px-6 py-4 bg-slate-800 border border-primary-500/30 rounded-xl shadow-2xl shadow-primary-500/20 text-white font-medium transform translate-x-[400px] transition-transform duration-300 flex items-center gap-3 z-50"
-    >
-      <div class="w-2 h-2 bg-primary-500 rounded-full animate-pulse"></div>
-      <span>Mensagem</span>
+      <!-- Mobile Navigation -->
+      <nav id="mobile-menu" class="hidden lg:hidden pb-4 space-y-2 animate-slide-up">
+        <a href="/meus-eventos/"
+          class="block px-4 py-3 rounded-lg bg-primary-500/10 text-primary-400 font-medium border border-primary-500/20">
+          Meus eventos
+        </a>
+        <a href="/meus-certificados/"
+          class="block px-4 py-3 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/50 transition-all duration-200">
+          Meus certificados
+        </a>
+        <a href="/dashboard/"
+          class="block px-4 py-3 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/50 transition-all duration-200">
+          Eventos
+        </a>
+        <a href="/admin/" class="block px-4 py-3 text-center bg-slate-800 rounded-lg font-medium">
+          Admin
+        </a>
+
+        <!-- Botão do painel do organizador no mobile (começa escondido) -->
+        <a id="btn-painel-organizador-mobile" href="/painel-organizador/"
+          class="hidden block px-4 py-3 text-center bg-slate-800 rounded-lg font-medium">
+          Painel do organizador
+        </a>
+
+        <button id="btn-logout-mobile" class="block w-full px-4 py-3 text-center bg-red-600 rounded-lg font-medium">
+          Sair
+        </button>
+      </nav>
     </div>
+  </header>
 
-    <!-- JS via static (forçando recarregar versão nova) -->
-    <script src="{% static 'js/meus_eventos.js' %}?v=10"></script>
-  </body>
+  <!-- Main Content -->
+  <main class="pt-32 pb-20 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-7xl mx-auto">
+      <!-- Section Header -->
+      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-12 animate-fade-in">
+        <div>
+          <h1
+            class="text-4xl sm:text-5xl font-bold mb-2 bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">
+            Meus Eventos
+          </h1>
+          <p class="text-slate-400 text-lg flex items-center gap-2">
+            <i class="bx bx-check-circle text-emerald-400"></i>
+            Eventos em que você está inscrito
+          </p>
+        </div>
+
+        <a href="/dashboard/"
+          class="inline-flex items-center gap-2 px-6 py-3 bg-slate-800 hover:bg-slate-700 rounded-xl font-medium transition-all duration-200">
+          <i class="bx bx-search text-xl"></i>
+          <span>Buscar mais eventos</span>
+        </a>
+      </div>
+
+      <!-- Loading State -->
+      <div id="loading-state" class="text-center py-20 animate-pulse">
+        <div class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-slate-800/50 mb-6">
+          <i class="bx bx-loader-alt bx-spin text-4xl text-primary-400"></i>
+        </div>
+        <h3 class="text-2xl font-semibold mb-2 text-slate-300">
+          Carregando seus eventos...
+        </h3>
+        <p class="text-slate-500">Aguarde um momento</p>
+      </div>
+
+      <!-- Empty State -->
+      <div id="empty-state" class="hidden text-center py-20 animate-scale-in">
+        <div class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-slate-800/50 mb-6">
+          <i class="bx bx-calendar-x text-4xl text-slate-600"></i>
+        </div>
+        <h3 class="text-2xl font-semibold mb-2 text-slate-300">
+          Nenhuma inscrição ainda
+        </h3>
+        <p class="text-slate-500 mb-6">
+          Você ainda não se inscreveu em nenhum evento
+        </p>
+        <a href="/dashboard/"
+          class="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-500 rounded-xl font-semibold transition-all duration-200">
+          <i class="bx bx-search text-xl"></i>
+          <span>Explorar eventos</span>
+        </a>
+      </div>
+
+      <!-- Grid de Eventos -->
+      <div id="eventos-box" class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade-in">
+        <!-- Eventos serão inseridos aqui via JavaScript -->
+      </div>
+    </div>
+  </main>
+
+  <!-- Toast Notification -->
+  <div id="toast" role="status" aria-live="polite"
+    class="fixed bottom-8 right-8 px-6 py-4 bg-slate-800 border border-primary-500/30 rounded-xl shadow-2xl shadow-primary-500/20 text-white font-medium transform translate-x-[400px] transition-transform duration-300 flex items-center gap-3 z-50">
+    <div class="w-2 h-2 bg-primary-500 rounded-full animate-pulse"></div>
+    <span>Mensagem</span>
+  </div>
+
+  <!-- JS via static (forçando recarregar versão nova) -->
+  <script src="{% static 'js/meus_eventos.js' %}?v=10"></script>
+</body>
+
 </html>

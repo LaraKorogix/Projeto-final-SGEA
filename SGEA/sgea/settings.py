@@ -18,7 +18,9 @@ INSTALLED_APPS = [
 
     # Terceiros
     'rest_framework',
+    'rest_framework.authtoken',
     'corsheaders',
+    'drf_yasg',
 
     # Apps do projeto
     'eventos',
@@ -133,10 +135,10 @@ CORS_EXPOSE_HEADERS = [
 # ========= DRF =========
 REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.AllowAny',
+        'rest_framework.permissions.IsAuthenticated',
     ],
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.SessionAuthentication',
+        'eventos.authentication.ApiTokenAuthentication',
     ],
     'DEFAULT_RENDERER_CLASSES': [
         'rest_framework.renderers.JSONRenderer',
@@ -150,9 +152,40 @@ REST_FRAMEWORK = {
     ],
     'EXCEPTION_HANDLER': 'rest_framework.views.exception_handler',
     'NON_FIELD_ERRORS_KEY': 'error',
+    'DEFAULT_THROTTLE_RATES': {
+        'consulta_eventos': '20/day',
+        'inscricao_participantes': '50/day',
+    },
 }
 
 # ========= Sessão (login via sessão que você já usa) =========
 SESSION_COOKIE_AGE = 86400  # 24 horas
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = 'Lax'
+
+# ========= Swagger =========
+SWAGGER_SETTINGS = {
+    'SECURITY_DEFINITIONS': {
+        'Token': {
+            'type': 'apiKey',
+            'name': 'Authorization',
+            'in': 'header',
+            'description': 'Token de autenticação. Formato: Token <seu_token>'
+        }
+    },
+    'USE_SESSION_AUTH': False,
+}
+
+# ========= Email (Desenvolvimento: mostra no console) =========
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+DEFAULT_FROM_EMAIL = 'noreply@sgea.com'
+SITE_URL = 'http://127.0.0.1:8000'
+
+# Para produção, use:
+# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+# EMAIL_HOST = 'smtp.gmail.com'
+# EMAIL_PORT = 587
+# EMAIL_USE_TLS = True
+# EMAIL_HOST_USER = 'seu_email@gmail.com'
+# EMAIL_HOST_PASSWORD = 'sua_senha_de_app'
+

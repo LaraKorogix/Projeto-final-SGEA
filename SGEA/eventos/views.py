@@ -1,26 +1,47 @@
 from rest_framework import viewsets, status, serializers
 from rest_framework.decorators import action
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.shortcuts import render, redirect
 from rest_framework.response import Response
 from django.contrib.auth.hashers import check_password
 from django.utils import timezone
-from django.utils.dateparse import parse_datetime  # ✅ para tratar datas corretamente
+from django.utils.dateparse import parse_datetime
+from django.core.mail import send_mail
+from django.template.loader import render_to_string
+from django.conf import settings
+from datetime import datetime
+import secrets
 
-from .models import Usuario, Categoria, Evento, Inscricao, Certificado
+from .models import Usuario, Categoria, Evento, Inscricao, Certificado, ApiToken, AuditLog
 from .serializers import (
     UsuarioSerializer,
     CategoriaSerializer,
     EventoSerializer,
     InscricaoSerializer,
     CertificadoSerializer,
+    AuditLogSerializer,
 )
+from .throttles import ConsultaEventosThrottle, InscricaoParticipantesThrottle
+
+
+def get_client_ip(request):
+    """Obtém o IP do cliente da requisição."""
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        return x_forwarded_for.split(',')[0]
+    return request.META.get('REMOTE_ADDR')
 
 
 class UsuarioViewSet(viewsets.ModelViewSet):
     queryset = Usuario.objects.all().order_by("-id")
     serializer_class = UsuarioSerializer
 
-    @action(detail=False, methods=["post"])
+    def get_permissions(self):
+        if self.action in ['login', 'registro']:
+            return [AllowAny()]
+        return [IsAuthenticated()]
+
+    @action(detail=False, methods=["post"], permission_classes=[AllowAny])
     def login(self, request):
         email = request.data.get("email")
         senha = request.data.get("senha")
@@ -33,14 +54,34 @@ class UsuarioViewSet(viewsets.ModelViewSet):
 
         try:
             usuario = Usuario.objects.get(email=email)
+
+            if not usuario.email_confirmado:
+                return Response(
+                    {
+                        "error": "Email não confirmado. Verifique sua caixa de entrada.",
+                        "email_nao_confirmado": True,
+                    },
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
             if check_password(senha, usuario.senha):
-                # cria sessão simples
+                token, _ = ApiToken.objects.get_or_create(usuario=usuario)
+
                 request.session["user_id"] = usuario.pk
                 request.session["user_email"] = usuario.email
                 request.session["user_perfil"] = usuario.perfil
 
+                # Registrar auditoria de login
+                AuditLog.registrar(
+                    acao="usuario_login",
+                    usuario=usuario,
+                    detalhes=f"Login realizado com sucesso",
+                    ip=get_client_ip(request),
+                )
+
                 serializer = self.get_serializer(usuario)
                 response_data = serializer.data
+                response_data["token"] = token.key
                 response_data["message"] = "Login realizado com sucesso"
 
                 return Response(response_data, status=status.HTTP_200_OK)
@@ -54,25 +95,58 @@ class UsuarioViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-    @action(detail=False, methods=["post"])
+    @action(detail=False, methods=["post"], permission_classes=[AllowAny])
     def registro(self, request):
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
             usuario = serializer.save()
 
-            # auto-login
-            request.session["user_id"] = usuario.id
-            request.session["user_email"] = usuario.email
-            request.session["user_perfil"] = usuario.perfil
+            # Gerar código de confirmação
+            codigo = secrets.token_urlsafe(32)
+            usuario.codigo_confirmacao = codigo
+            usuario.email_confirmado = False
+            usuario.save()
+
+            # Enviar email de confirmação
+            link_confirmacao = f"{settings.SITE_URL}/api/usuarios/confirmar_email/?codigo={codigo}"
+
+            try:
+                html_message = render_to_string('emails/email_confirmacao.html', {
+                    'nome': usuario.nome,
+                    'codigo': codigo[:8].upper(),
+                    'link_confirmacao': link_confirmacao,
+                })
+
+                send_mail(
+                    subject='Confirme seu cadastro no SGEA',
+                    message=f'Olá {usuario.nome}, confirme seu email acessando: {link_confirmacao}',
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[usuario.email],
+                    html_message=html_message,
+                    fail_silently=False,
+                )
+            except Exception as e:
+                print(f"Erro ao enviar email: {e}")
+
+            # Registrar auditoria de criação de usuário
+            AuditLog.registrar(
+                acao="usuario_criado",
+                usuario=usuario,
+                detalhes=f"Novo usuário cadastrado: {usuario.email}",
+                ip=get_client_ip(request),
+            )
 
             response_data = serializer.data
-            response_data["message"] = "Usuário criado com sucesso"
+            response_data["message"] = "Cadastro realizado! Verifique seu email para confirmar."
+            response_data["email_enviado"] = True
 
             return Response(response_data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=["post"])
     def logout(self, request):
+        if hasattr(request, 'auth') and request.auth:
+            request.auth.delete()
         request.session.flush()
         return Response(
             {"message": "Logout realizado com sucesso"},
@@ -81,47 +155,121 @@ class UsuarioViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"])
     def current_user(self, request):
-        user_id = request.session.get("user_id")
-        if user_id:
-            try:
-                usuario = Usuario.objects.get(id=user_id)
-                serializer = self.get_serializer(usuario)
-                return Response(serializer.data, status=status.HTTP_200_OK)
-            except Usuario.DoesNotExist:
-                pass
+        if request.user and hasattr(request.user, 'pk'):
+            serializer = self.get_serializer(request.user)
+            return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(
             {"error": "Usuário não autenticado"},
             status=status.HTTP_401_UNAUTHORIZED,
         )
 
+    @action(detail=False, methods=["get"], permission_classes=[AllowAny])
+    def confirmar_email(self, request):
+        codigo = request.query_params.get("codigo")
+
+        if not codigo:
+            return Response(
+                {"error": "Código de confirmação não fornecido"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            usuario = Usuario.objects.get(codigo_confirmacao=codigo)
+
+            if usuario.email_confirmado:
+                return redirect('/login/?msg=email_ja_confirmado')
+
+            usuario.email_confirmado = True
+            usuario.codigo_confirmacao = None
+            usuario.save()
+
+            # Cria token para login automático
+            token, _ = ApiToken.objects.get_or_create(usuario=usuario)
+
+            return redirect('/login/?msg=email_confirmado')
+
+        except Usuario.DoesNotExist:
+            return redirect('/login/?msg=codigo_invalido')
+
+    @action(detail=False, methods=["post"], permission_classes=[AllowAny])
+    def reenviar_confirmacao(self, request):
+        email = request.data.get("email")
+
+        if not email:
+            return Response(
+                {"error": "Email é obrigatório"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            usuario = Usuario.objects.get(email=email)
+
+            if usuario.email_confirmado:
+                return Response(
+                    {"message": "Email já confirmado"},
+                    status=status.HTTP_200_OK,
+                )
+
+            # Gerar novo código
+            codigo = secrets.token_urlsafe(32)
+            usuario.codigo_confirmacao = codigo
+            usuario.save()
+
+            link_confirmacao = f"{settings.SITE_URL}/api/usuarios/confirmar_email/?codigo={codigo}"
+
+            html_message = render_to_string('emails/email_confirmacao.html', {
+                'nome': usuario.nome,
+                'codigo': codigo[:8].upper(),
+                'link_confirmacao': link_confirmacao,
+            })
+
+            send_mail(
+                subject='Confirme seu cadastro no SGEA',
+                message=f'Olá {usuario.nome}, confirme seu email: {link_confirmacao}',
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[usuario.email],
+                html_message=html_message,
+                fail_silently=False,
+            )
+
+            return Response(
+                {"message": "Email de confirmação reenviado"},
+                status=status.HTTP_200_OK,
+            )
+
+        except Usuario.DoesNotExist:
+            return Response(
+                {"error": "Usuário não encontrado"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
 
 class CategoriaViewSet(viewsets.ModelViewSet):
     queryset = Categoria.objects.all().order_by("nome")
     serializer_class = CategoriaSerializer
+    permission_classes = [AllowAny]
 
 
 class EventoViewSet(viewsets.ModelViewSet):
     queryset = Evento.objects.all().order_by("-data_inicio")
     serializer_class = EventoSerializer
+    throttle_classes = [ConsultaEventosThrottle]
 
     def create(self, request, *args, **kwargs):
-        user_id = request.session.get("user_id")
-        user_perfil = request.session.get("user_perfil")
-
-        if not user_id:
+        if not request.user or not hasattr(request.user, 'pk'):
             return Response(
                 {"error": "Usuário não autenticado"},
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
-        if user_perfil != "organizador":
+        if request.user.perfil != "organizador":
             return Response(
                 {"error": "Apenas organizadores podem criar eventos"},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
         try:
-            organizador = Usuario.objects.get(id=user_id)
+            organizador = request.user
             data = request.data.copy()
 
             # campos obrigatórios
@@ -269,74 +417,59 @@ class EventoViewSet(viewsets.ModelViewSet):
         Para organizador: eventos que ele criou.
         Para participante: eventos em que ele está inscrito.
         """
-        user_id = request.session.get("user_id")
-        if not user_id:
+        if not request.user or not hasattr(request.user, 'pk'):
             return Response(
                 {"error": "Usuário não autenticado"},
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
-        try:
-            usuario = Usuario.objects.get(id=user_id)
+        usuario = request.user
+        if usuario.perfil == "organizador":
+            eventos = Evento.objects.filter(organizador=usuario)
+        else:
+            eventos = Evento.objects.filter(
+                inscricao__usuario=usuario
+            ).distinct()
 
-            if usuario.perfil == "organizador":
-                eventos = Evento.objects.filter(organizador=usuario)
-            else:
-                eventos = Evento.objects.filter(
-                    inscricao__usuario=usuario
-                ).distinct()
-
-            eventos = eventos.order_by("-data_inicio")
-            serializer = self.get_serializer(eventos, many=True)
-            return Response(serializer.data, status=status.HTTP_200_OK)
-
-        except Usuario.DoesNotExist:
-            return Response(
-                {"error": "Usuário não encontrado"},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+        eventos = eventos.order_by("-data_inicio")
+        serializer = self.get_serializer(eventos, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=["get"], url_path="organizador")
     def eventos_do_organizador(self, request):
-        user_id = request.session.get("user_id")
-        user_perfil = request.session.get("user_perfil")
-
-        if not user_id:
+        if not request.user or not hasattr(request.user, 'pk'):
             return Response(
                 {"error": "Usuário não autenticado"},
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
-        if user_perfil != "organizador":
+        if request.user.perfil != "organizador":
             return Response(
                 {"error": "Apenas organizadores podem acessar esta lista"},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
         eventos = Evento.objects.filter(
-            organizador_id=user_id
+            organizador=request.user
         ).order_by("-data_inicio")
         serializer = self.get_serializer(eventos, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=["get"], url_path="estatisticas")
     def estatisticas(self, request):
-        user_id = request.session.get("user_id")
-        user_perfil = request.session.get("user_perfil")
-
-        if not user_id:
+        if not request.user or not hasattr(request.user, 'pk'):
             return Response(
                 {"error": "Usuário não autenticado"},
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
-        if user_perfil != "organizador":
+        if request.user.perfil != "organizador":
             return Response(
                 {"error": "Apenas organizadores podem acessar estatísticas"},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        eventos = Evento.objects.filter(organizador_id=user_id)
+        eventos = Evento.objects.filter(organizador=request.user)
         total_eventos = eventos.count()
         total_proximos = eventos.filter(
             data_inicio__gte=timezone.now()
@@ -358,10 +491,10 @@ class EventoViewSet(viewsets.ModelViewSet):
 class InscricaoViewSet(viewsets.ModelViewSet):
     queryset = Inscricao.objects.all().order_by("-data_inscricao")
     serializer_class = InscricaoSerializer
+    throttle_classes = [InscricaoParticipantesThrottle]
 
     def create(self, request, *args, **kwargs):
-        user_id = request.session.get("user_id")
-        if not user_id:
+        if not request.user or not hasattr(request.user, 'pk'):
             return Response(
                 {"error": "Usuário não autenticado"},
                 status=status.HTTP_401_UNAUTHORIZED,
@@ -376,7 +509,7 @@ class InscricaoViewSet(viewsets.ModelViewSet):
 
         try:
             evento = Evento.objects.get(id=evento_id)
-            usuario = Usuario.objects.get(id=user_id)
+            usuario = request.user
 
             if Inscricao.objects.filter(
                 evento=evento, usuario=usuario
@@ -396,6 +529,17 @@ class InscricaoViewSet(viewsets.ModelViewSet):
             inscricao = Inscricao.objects.create(
                 evento=evento, usuario=usuario
             )
+
+            # Registrar auditoria de inscrição
+            AuditLog.registrar(
+                acao="inscricao_criada",
+                usuario=usuario,
+                detalhes=f"Inscrição no evento: {evento.titulo}",
+                ip=get_client_ip(request),
+                evento_id=evento.id,
+                inscricao_id=inscricao.id,
+            )
+
             serializer = self.get_serializer(inscricao)
 
             return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -405,33 +549,20 @@ class InscricaoViewSet(viewsets.ModelViewSet):
                 {"error": "Evento não encontrado"},
                 status=status.HTTP_404_NOT_FOUND,
             )
-        except Usuario.DoesNotExist:
-            return Response(
-                {"error": "Usuário não encontrado"},
-                status=status.HTTP_404_NOT_FOUND,
-            )
 
     @action(detail=False, methods=["get"])
     def minhas_inscricoes(self, request):
-        user_id = request.session.get("user_id")
-        if not user_id:
+        if not request.user or not hasattr(request.user, 'pk'):
             return Response(
                 {"error": "Usuário não autenticado"},
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
-        try:
-            usuario = Usuario.objects.get(id=user_id)
-            inscricoes = Inscricao.objects.filter(
-                usuario=usuario
-            ).order_by("-data_inscricao")
-            serializer = self.get_serializer(inscricoes, many=True)
-            return Response(serializer.data)
-        except Usuario.DoesNotExist:
-            return Response(
-                {"error": "Usuário não encontrado"},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+        inscricoes = Inscricao.objects.filter(
+            usuario=request.user
+        ).order_by("-data_inscricao")
+        serializer = self.get_serializer(inscricoes, many=True)
+        return Response(serializer.data)
 
     @action(detail=True, methods=["patch"])
     def marcar_presenca(self, request, pk=None):
@@ -442,8 +573,7 @@ class InscricaoViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["post"], url_path="cancelar")
     def cancelar_inscricao(self, request):
-        user_id = request.session.get("user_id")
-        if not user_id:
+        if not request.user or not hasattr(request.user, 'pk'):
             return Response(
                 {"error": "Usuário não autenticado"},
                 status=status.HTTP_401_UNAUTHORIZED,
@@ -458,7 +588,7 @@ class InscricaoViewSet(viewsets.ModelViewSet):
 
         try:
             inscricao = Inscricao.objects.get(
-                evento_id=evento_id, usuario_id=user_id
+                evento_id=evento_id, usuario=request.user
             )
         except Inscricao.DoesNotExist:
             return Response(
@@ -478,15 +608,10 @@ class CertificadoViewSet(viewsets.ModelViewSet):
     serializer_class = CertificadoSerializer
 
     def get_queryset(self):
-        """
-        Sempre filtra certificados do usuário logado:
-        certificados ligados às inscrições desse usuário.
-        """
-        user_id = self.request.session.get("user_id")
-        if not user_id:
+        if not self.request.user or not hasattr(self.request.user, 'pk'):
             return Certificado.objects.none()
         return Certificado.objects.filter(
-            inscricao__usuario_id=user_id
+            inscricao__usuario=self.request.user
         ).order_by("-data_emissao")
 
     def create(self, request, *args, **kwargs):
@@ -509,42 +634,43 @@ class CertificadoViewSet(viewsets.ModelViewSet):
             )
 
     def list(self, request, *args, **kwargs):
-        """
-        Ao listar:
-        - Verifica o usuário logado
-        - Encontra inscrições dele cujos eventos já terminaram
-        - Gera certificados (get_or_create) para essas inscrições
-        - Cada Certificado gera um PDF genérico automaticamente
-        - Retorna os certificados desse usuário
-        """
-        user_id = request.session.get("user_id")
-        if not user_id:
+        if not request.user or not hasattr(request.user, 'pk'):
             return Response(
                 {"error": "Usuário não autenticado"},
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
-        try:
-            usuario = Usuario.objects.get(id=user_id)
-        except Usuario.DoesNotExist:
-            return Response(
-                {"error": "Usuário não encontrado"},
-                status=status.HTTP_404_NOT_FOUND,
-            )
-
         agora = timezone.now()
-
-        # Aqui você pode colocar presenca=1 se quiser só para presentes
+        # Apenas gera certificados para quem tem presença confirmada
         inscricoes_concluidas = Inscricao.objects.filter(
-            usuario=usuario,
+            usuario=request.user,
             evento__data_fim__lte=agora,
+            presenca=1,  # Apenas quem teve presença confirmada
         )
 
         for insc in inscricoes_concluidas:
             cert, created = Certificado.objects.get_or_create(inscricao=insc)
-            # Se já existia mas ainda não tinha arquivo (casos antigos), garante PDF
+            if created:
+                # Registrar auditoria de certificado gerado
+                AuditLog.registrar(
+                    acao="certificado_gerado",
+                    usuario=request.user,
+                    detalhes=f"Certificado gerado para evento: {insc.evento.titulo}",
+                    ip=get_client_ip(request),
+                    evento_id=insc.evento.id,
+                    inscricao_id=insc.id,
+                    certificado_id=cert.id,
+                )
             if not cert.arquivo:
                 cert.save()
+
+        # Registrar auditoria de consulta
+        AuditLog.registrar(
+            acao="certificado_consultado",
+            usuario=request.user,
+            detalhes="Lista de certificados consultada",
+            ip=get_client_ip(request),
+        )
 
         queryset = self.get_queryset()
         serializer = self.get_serializer(queryset, many=True)
@@ -562,6 +688,62 @@ class CertificadoViewSet(viewsets.ModelViewSet):
                 {"error": "Certificado invalido"},
                 status=status.HTTP_404_NOT_FOUND,
             )
+
+
+class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
+    """ViewSet para consulta de logs de auditoria (apenas organizadores)."""
+    queryset = AuditLog.objects.all().order_by("-data_hora")
+    serializer_class = AuditLogSerializer
+
+    def get_permissions(self):
+        return [IsAuthenticated()]
+
+    def list(self, request, *args, **kwargs):
+        # Verifica se é organizador
+        if not request.user or not hasattr(request.user, 'pk'):
+            return Response(
+                {"error": "Usuário não autenticado"},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        if request.user.perfil != "organizador":
+            return Response(
+                {"error": "Apenas organizadores podem consultar logs"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        queryset = self.get_queryset()
+
+        # Filtro por data (formato: YYYY-MM-DD)
+        data_str = request.query_params.get("data")
+        if data_str:
+            try:
+                data = datetime.strptime(data_str, "%Y-%m-%d").date()
+                queryset = queryset.filter(data_hora__date=data)
+            except ValueError:
+                pass
+
+        # Filtro por usuário (email ou id)
+        usuario_email = request.query_params.get("usuario_email")
+        usuario_id = request.query_params.get("usuario_id")
+
+        if usuario_email:
+            queryset = queryset.filter(usuario__email__icontains=usuario_email)
+        if usuario_id:
+            queryset = queryset.filter(usuario_id=usuario_id)
+
+        # Filtro por tipo de ação
+        acao = request.query_params.get("acao")
+        if acao:
+            queryset = queryset.filter(acao=acao)
+
+        # Paginação simples
+        limit = int(request.query_params.get("limit", 50))
+        offset = int(request.query_params.get("offset", 0))
+        queryset = queryset[offset:offset + limit]
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
 
 
 def dashboard_page(request):

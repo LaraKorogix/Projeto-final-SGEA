@@ -202,3 +202,29 @@ class CertificadoSerializer(serializers.ModelSerializer):
                 return request.build_absolute_uri(url)
             return url
         return None
+
+
+class AuditLogSerializer(serializers.ModelSerializer):
+    usuario_nome = serializers.CharField(source='usuario.nome', read_only=True, allow_null=True)
+    usuario_email = serializers.CharField(source='usuario.email', read_only=True, allow_null=True)
+    acao_display = serializers.CharField(source='get_acao_display', read_only=True)
+
+    class Meta:
+        from .models import AuditLog
+        model = AuditLog
+        fields = [
+            "id",
+            "usuario",
+            "usuario_nome",
+            "usuario_email",
+            "acao",
+            "acao_display",
+            "detalhes",
+            "ip_address",
+            "data_hora",
+            "evento_id",
+            "inscricao_id",
+            "certificado_id",
+        ]
+        read_only_fields = fields
+

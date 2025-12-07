@@ -1,5 +1,7 @@
 from django.db import models
 import secrets
+import binascii
+import os
 
 from io import BytesIO
 from django.core.files.base import ContentFile
@@ -21,9 +23,36 @@ class Usuario(models.Model):
     instituicao_ensino = models.CharField(max_length=255, blank=True, null=True)
     perfil = models.CharField(max_length=20, choices=PERFIL_CHOICES)
     criado_em = models.DateTimeField(auto_now_add=True)
+    email_confirmado = models.BooleanField(default=False)
+    codigo_confirmacao = models.CharField(max_length=64, blank=True, null=True)
 
     class Meta:
         db_table = "usuarios"
+
+    @property
+    def is_authenticated(self):
+        return True
+
+    @property
+    def is_anonymous(self):
+        return False
+
+
+class ApiToken(models.Model):
+    key = models.CharField(max_length=40, primary_key=True)
+    usuario = models.OneToOneField(Usuario, on_delete=models.CASCADE, related_name='auth_token')
+    created = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "api_tokens"
+
+    def save(self, *args, **kwargs):
+        if not self.key:
+            self.key = binascii.hexlify(os.urandom(20)).decode()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.key
 
 
 class Categoria(models.Model):
@@ -172,3 +201,59 @@ class Certificado(models.Model):
         if creating or not self.arquivo:
             self.gerar_pdf()
             super().save(update_fields=["arquivo", "url_certificado"])
+
+
+class AuditLog(models.Model):
+    """Modelo para registrar ações críticas do sistema para auditoria."""
+
+    ACAO_CHOICES = [
+        ("usuario_criado", "Usuário Criado"),
+        ("usuario_login", "Login de Usuário"),
+        ("evento_criado", "Evento Criado"),
+        ("evento_alterado", "Evento Alterado"),
+        ("evento_excluido", "Evento Excluído"),
+        ("evento_consultado", "Evento Consultado"),
+        ("inscricao_criada", "Inscrição Criada"),
+        ("inscricao_cancelada", "Inscrição Cancelada"),
+        ("presenca_marcada", "Presença Marcada"),
+        ("certificado_gerado", "Certificado Gerado"),
+        ("certificado_consultado", "Certificado Consultado"),
+    ]
+
+    usuario = models.ForeignKey(
+        Usuario,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="logs_auditoria"
+    )
+    acao = models.CharField(max_length=50, choices=ACAO_CHOICES)
+    detalhes = models.TextField(blank=True, null=True)
+    ip_address = models.GenericIPAddressField(blank=True, null=True)
+    data_hora = models.DateTimeField(auto_now_add=True)
+
+    # Referências opcionais para entidades relacionadas
+    evento_id = models.IntegerField(blank=True, null=True)
+    inscricao_id = models.IntegerField(blank=True, null=True)
+    certificado_id = models.IntegerField(blank=True, null=True)
+
+    class Meta:
+        db_table = "audit_logs"
+        ordering = ["-data_hora"]
+
+    def __str__(self):
+        return f"{self.data_hora} - {self.get_acao_display()} - {self.usuario}"
+
+    @classmethod
+    def registrar(cls, acao, usuario=None, detalhes=None, ip=None, evento_id=None, inscricao_id=None, certificado_id=None):
+        """Método utilitário para criar um registro de auditoria."""
+        return cls.objects.create(
+            usuario=usuario,
+            acao=acao,
+            detalhes=detalhes,
+            ip_address=ip,
+            evento_id=evento_id,
+            inscricao_id=inscricao_id,
+            certificado_id=certificado_id,
+        )
+

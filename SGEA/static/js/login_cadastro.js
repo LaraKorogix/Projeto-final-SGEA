@@ -191,10 +191,11 @@ function setSessionUser(userObj) {
 // =================== Validação de senha ===================
 function isPasswordValid(pw) {
   if (!pw || pw.length < 8) return false;
-  // precisa de ao menos uma letra e um número
+  // precisa de ao menos uma letra, um número e um caractere especial
   const hasLetter = /[A-Za-zÀ-ÖØ-öø-ÿ]/.test(pw);
   const hasNumber = /\d/.test(pw);
-  return hasLetter && hasNumber;
+  const hasSpecial = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(pw);
+  return hasLetter && hasNumber && hasSpecial;
 }
 
 // =================== Confirmação de senha (front) ===================
@@ -273,7 +274,7 @@ if (formCadastro) {
 
     // Validação de senha (mínimo 8, contendo letra e número)
     if (!isPasswordValid(senha)) {
-      showToast("Senha inválida: mínimo 8 caracteres, contendo letras e números.");
+      showToast("Senha inválida: mínimo 8 caracteres, contendo letras, números e caracteres especiais.");
       return;
     }
 
